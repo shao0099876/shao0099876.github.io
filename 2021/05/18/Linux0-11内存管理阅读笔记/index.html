@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.3/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="next-config" data-name="main" type="application/json">{&quot;hostname&quot;:&quot;shao0099876.github.io&quot;,&quot;root&quot;:&quot;&#x2F;&quot;,&quot;images&quot;:&quot;&#x2F;images&quot;,&quot;scheme&quot;:&quot;Muse&quot;,&quot;version&quot;:&quot;8.4.0&quot;,&quot;exturl&quot;:false,&quot;sidebar&quot;:{&quot;position&quot;:&quot;left&quot;,&quot;display&quot;:&quot;post&quot;,&quot;padding&quot;:18,&quot;offset&quot;:12},&quot;copycode&quot;:false,&quot;bookmark&quot;:{&quot;enable&quot;:false,&quot;color&quot;:&quot;#222&quot;,&quot;save&quot;:&quot;auto&quot;},&quot;fancybox&quot;:false,&quot;mediumzoom&quot;:false,&quot;lazyload&quot;:false,&quot;pangu&quot;:false,&quot;comments&quot;:{&quot;style&quot;:&quot;buttons&quot;,&quot;active&quot;:null,&quot;storage&quot;:true,&quot;lazyload&quot;:false,&quot;nav&quot;:null},&quot;motion&quot;:{&quot;enable&quot;:true,&quot;async&quot;:false,&quot;transition&quot;:{&quot;post_block&quot;:&quot;fadeIn&quot;,&quot;post_header&quot;:&quot;fadeInDown&quot;,&quot;post_body&quot;:&quot;fadeInDown&quot;,&quot;coll_header&quot;:&quot;fadeInLeft&quot;,&quot;sidebar&quot;:&quot;fadeInUp&quot;}},&quot;prism&quot;:false,&quot;i18n&quot;:{&quot;placeholder&quot;:&quot;搜索...&quot;,&quot;empty&quot;:&quot;没有找到任何搜索结果：${query}&quot;,&quot;hits_time&quot;:&quot;找到 ${hits} 个搜索结果（用时 ${time} 毫秒）&quot;,&quot;hits&quot;:&quot;找到 ${hits} 个搜索结果&quot;}}</script>
+<meta name="description" content="Linux0.11系统从引导启动到初始化完毕过程以及内存管理全部函数的阅读笔记">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux0.11内存管理阅读笔记">
+<meta property="og:url" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/index.html">
+<meta property="og:site_name" content="SRC的技术笔记Blog">
+<meta property="og:description" content="Linux0.11系统从引导启动到初始化完毕过程以及内存管理全部函数的阅读笔记">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/1.png">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/2.png">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/3.png">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/4.png">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/5.png">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/6.png">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/7.png">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/8.png">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/9.png">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/10.png">
+<meta property="og:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/11.png">
+<meta property="article:published_time" content="2021-05-18T08:06:20.000Z">
+<meta property="article:modified_time" content="2021-05-18T08:14:51.072Z">
+<meta property="article:author" content="SRC(shao0099876@163.com)">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/1.png">
+
+
+<link rel="canonical" href="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{&quot;sidebar&quot;:&quot;&quot;,&quot;isHome&quot;:false,&quot;isPost&quot;:true,&quot;lang&quot;:&quot;zh-CN&quot;,&quot;comments&quot;:true,&quot;permalink&quot;:&quot;https:&#x2F;&#x2F;shao0099876.github.io&#x2F;2021&#x2F;05&#x2F;18&#x2F;Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0&#x2F;&quot;,&quot;path&quot;:&quot;2021&#x2F;05&#x2F;18&#x2F;Linux0-11内存管理阅读笔记&#x2F;&quot;,&quot;title&quot;:&quot;Linux0.11内存管理阅读笔记&quot;}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">&quot;&quot;</script>
+<title>Linux0.11内存管理阅读笔记 | SRC的技术笔记Blog</title><script src="/js/config.js"></script>
+  
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">SRC的技术笔记Blog</h1>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%8Ebootsect%E5%88%B0main%E5%86%85%E5%AD%98%E5%88%9D%E5%A7%8B%E5%8C%96%E5%AE%8C%E6%AF%95"><span class="nav-number">1.</span> <span class="nav-text">从bootsect到main内存初始化完毕</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#memory-c%E5%87%BD%E6%95%B0%E6%B5%81%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">memory.c函数流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#mem-init-start-mem-end-mem"><span class="nav-number">2.1.</span> <span class="nav-text">mem_init(start_mem, end_mem)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#get-free-page"><span class="nav-number">2.2.</span> <span class="nav-text">get_free_page()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#free-page-addr"><span class="nav-number">2.3.</span> <span class="nav-text">free_page(addr)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#free-page-tables-from-size"><span class="nav-number">2.4.</span> <span class="nav-text">free_page_tables(from,size)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#copy-page-tables-from-to-size"><span class="nav-number">2.5.</span> <span class="nav-text">copy_page_tables(from,to,size)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#put-page-page-address"><span class="nav-number">2.6.</span> <span class="nav-text">put_page(page,address)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#un-wp-page-table-entry"><span class="nav-number">2.7.</span> <span class="nav-text">un_wp_page(table_entry)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#do-wp-page-error-code-address"><span class="nav-number">2.8.</span> <span class="nav-text">do_wp_page(error_code,address)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#write-verify-address"><span class="nav-number">2.9.</span> <span class="nav-text">write_verify(address)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#get-empty-page-address"><span class="nav-number">2.10.</span> <span class="nav-text">get_empty_page(address)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#try-to-share-address-task-struct-p"><span class="nav-number">2.11.</span> <span class="nav-text">try_to_share(address,task_struct* p)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#share-page-address"><span class="nav-number">2.12.</span> <span class="nav-text">share_page(address)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#do-no-page-error-code-address"><span class="nav-number">2.13.</span> <span class="nav-text">do_no_page(error_code,address)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#page-s%E4%B8%AD%E7%9A%84%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86"><span class="nav-number">3.</span> <span class="nav-text">page.s中的中断处理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#page-fault"><span class="nav-number">3.1.</span> <span class="nav-text">page_fault</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">SRC(shao0099876@163.com)</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">2</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://shao0099876.github.io/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="SRC(shao0099876@163.com)">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="SRC的技术笔记Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Linux0.11内存管理阅读笔记
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2021-05-18 16:06:20 / 修改时间：16:14:51" itemprop="dateCreated datePublished" datetime="2021-05-18T16:06:20+08:00">2021-05-18</time>
+    </span>
+
+  
+</div>
+
+            <div class="post-description">Linux0.11系统从引导启动到初始化完毕过程以及内存管理全部函数的阅读笔记</div>
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h2 id="从bootsect到main内存初始化完毕"><a href="#从bootsect到main内存初始化完毕" class="headerlink" title="从bootsect到main内存初始化完毕"></a>从bootsect到main内存初始化完毕</h2><ol>
+<li><p>bootsect最初将加载到物理地址0x7c00处，占用512字节，地址占用情况为：</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/1.png"></p>
+</li>
+<li><p>bootsect随后将自身拷贝到物理地址0x90000起始的512B空间中。</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/2.png"></p>
+</li>
+<li><p>bootsect在0x9ff00处设置栈空间。</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/3.png"></p>
+</li>
+<li><p>bootsect加载setup.bin</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/4.png"></p>
+</li>
+<li><p>bootsect加载磁盘驱动器参数，计算每磁道上分布的扇区数量，并存到sectors符号处，大小2字节，供加载系统使用。</p>
+</li>
+<li><p>bootsect加载系统镜像到0x10000处，根据镜像大小提前算出终结段的位置，然后读取扇区，按终结段位置作为终止条件，不使用循环变量。</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/5.png"></p>
+</li>
+<li><p>进入setup执行阶段，setup首先移动system.bin系统镜像到线性地址的起始位置0x0</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/6.png"></p>
+</li>
+<li><p>setup设置gdt信息，建立内核代码段和数据段。</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/7.png"></p>
+</li>
+<li><p>转入head.s执行阶段，head.s首先设置系统堆栈。</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/8.png"></p>
+</li>
+<li><p>head.s设置gdt信息。</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/9.png"></p>
+</li>
+<li><p>head.s设置页表，首先清零页目录表和4个页表，然后在页目录表中0x0,0x4,0x8,0xc处写入页表0，页表1，页表2，页表3信息，最后再从后向前设置页表具体映射。完成后设置页目录表基址寄存器，启动分页机制，转入main.c执行。</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/10.png"></p>
+</li>
+<li><p>main.c计算内存大小，存储在memory_end中，计算缓冲区大小，存储在buffer_memory_end中，计算主存起始位置，存于main_memory_start中，同时为内存虚拟盘让出一段空间，此时内存规划结构为：</p>
+<p><img src="/2021/05/18/Linux0-11%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/11.png"></p>
+</li>
+<li><p>完成上述工作后，main.c调用mem_init函数，完成主存初始化。</p>
+</li>
+</ol>
+<h2 id="memory-c函数流程"><a href="#memory-c函数流程" class="headerlink" title="memory.c函数流程"></a>memory.c函数流程</h2><h3 id="mem-init-start-mem-end-mem"><a href="#mem-init-start-mem-end-mem" class="headerlink" title="mem_init(start_mem, end_mem)"></a>mem_init(start_mem, end_mem)</h3><p>该函数用于初始化主存页面信息表mem_map，运行前该信息表为无效表，运行后该信息表中非主存区域页面设置为占用状态，主存区域页面设置为未占用状态。</p>
+<p>传入参数start_mem表示主内存区起始位置，end_mem表示整个物理内存的容量。</p>
+<ol>
+<li>首先令物理内存地址上限HIGH_MEMORY等于end_mem</li>
+<li>设置页面状态，通过扫描mem_map数组，将全部页面置位100，表示已被占用。</li>
+<li>计算主存起始位置页面号</li>
+<li>使用end_mem与start_mem之差计算主内存区总页面数，并枚举主内存区页面，将mem_map对应项置0，表示未占用。</li>
+</ol>
+<h3 id="get-free-page"><a href="#get-free-page" class="headerlink" title="get_free_page()"></a>get_free_page()</h3><p>该函数用于获取一个空闲物理页面的起始地址。</p>
+<p>内联汇编的过程为：</p>
+<ol>
+<li><p>扫描mem_map数组，找到值为0的字节，表示该页面未占用。</p>
+</li>
+<li><p>如果找到了该种页面，通过页面偏移量和主存起始物理地址计算出该空闲物理页的起始物理地址，<strong>修改mem_map引用计数</strong>并返回物理地址。</p>
+<p>如果没有找到，跳转结束，返回0。</p>
+</li>
+</ol>
+<p>此处需要注意：该函数对mem_map做了修改，也就是进行了”分配”，表示该页面确实被某个进程占用，但该函数不关心具体哪个进程占用、该页面映射到哪个线性地址。使用该函数时需要注意是“get”而不是“find”，不要重复修改mem_map。</p>
+<p>如果找到一个空闲物理页，返回该页起始物理地址，否则返回0.</p>
+<p>外部调用：</p>
+<ol>
+<li><p>Exec.c（fs）中copy_strings函数</p>
+<p>当复制字符串时发生页面不足情况，调用该函数尝试获取一个空闲页面供复制。</p>
+</li>
+<li><p>Fork.c（kernel）中copy_process函数</p>
+<p>在创建一个子进程时，获取一个新页面用来存放task_struct等数据。</p>
+</li>
+<li><p>Inode.c（fs）中get_pipe_inode函数</p>
+<p>在创建一个新的管道节点时，获取一个空闲页给节点使用。</p>
+</li>
+<li><p>Malloc.c（lib）中init_bucket_desc函数</p>
+<p>在malloc的桶数据结构初始化是，获取一个新页面用于存放桶描述符。</p>
+</li>
+<li><p>Malloc.c（lib）中malloc函数</p>
+<p>获取一个新页面用于动态内存分配。</p>
+</li>
+</ol>
+<h3 id="free-page-addr"><a href="#free-page-addr" class="headerlink" title="free_page(addr)"></a>free_page(addr)</h3><p>该函数用于释放一个物理地址指向的内存页。</p>
+<p>输入参数addr表示要释放的物理地址。</p>
+<ol>
+<li><p>首先检查该物理地址是不是位于主存区域。</p>
+</li>
+<li><p>如果在主存区域，通过将物理地址减去主存起始地址，得到主存区相对物理地址</p>
+</li>
+<li><p>计算物理页面号，去mem_map中查看该页面是否处于空闲状态。</p>
+</li>
+<li><p>如果空闲，则发出panic宕机</p>
+<p>否则mem_map对应项减1，减少一次该页面的引用次数。</p>
+</li>
+</ol>
+<p>外部函数调用：</p>
+<ol>
+<li><p>Exec.c（fs）中do_execve函数</p>
+<p>该函数用于执行子进程，启动执行时，内核需要分配128KB内存用于存放可执行文件的参数和环境变量串，如果启动中出错，需要释放这些页面，此时调用free_page</p>
+</li>
+<li><p>Exit.c（kernel）中release函数</p>
+<p>该函数用于释放一个任务的task_struct，在创建任务时，task_struct位于一个页面，因此释放时，调用free_page释放task_struct所在页面</p>
+</li>
+<li><p>Fork.c（kernel）中copy_process函数</p>
+<p>在无法为进程创建代码段、数据段页面时，调用free_page来释放任务数据结构所占的页面。</p>
+</li>
+<li><p>Inode.c（fs）中iput函数</p>
+<p>在释放管道i节点时，如果再无节点引用，就要回收该节点，此时调用free_page来释放该节点所占的页面。</p>
+</li>
+<li><p>malloc.c（lib）中free_s函数</p>
+<p>释放动态内存分配出去的页面。</p>
+</li>
+</ol>
+<h3 id="free-page-tables-from-size"><a href="#free-page-tables-from-size" class="headerlink" title="free_page_tables(from,size)"></a>free_page_tables(from,size)</h3><p>该函数给定一个内存区域的起始位置和长度，将释放该内存区域对应的页面。</p>
+<p>输入参数from为内存区域起始物理地址，size为内存区域长度。</p>
+<ol>
+<li>检查起始位置的合法性</li>
+<li>利用“一个页表映射4MB内存”的特点，计算要释放几个页表/几个页目录项（此处用进一法）</li>
+<li>计算页目录项号from&gt;&gt;22，计算页目录项指针from&gt;&gt;22&lt;&lt;2=from&gt;&gt;20，从而获取页目录项。</li>
+<li>枚举页目录项，如果页目录项有效，则进入对应页表，遍历页表，调用free_page释放页面，完成后将页表项和页目录项均置0</li>
+<li>刷新TLB</li>
+</ol>
+<p>如果成功，返回0，否则发生宕机。</p>
+<p>外部调用：</p>
+<ol>
+<li><p>Exec.c（fs）中do_execve函数</p>
+<p>根据ldt指示的基地址和限长，调用free_page_tables将即将运行的程序即将占用的地址空间全部释放掉，进程运行中通过缺页中断即时分配。</p>
+</li>
+<li><p>exit.c（kernel）中do_exit函数</p>
+<p>程序退出时调用free_page_tables释放进程内存页。</p>
+</li>
+<li><p>Fork.c（kernel）中copy_mem函数</p>
+<p>创建新进程时需要设置代码段、数据段，并通过拷贝创建新页表，如果拷贝出错，需要释放申请到的空间。</p>
+</li>
+</ol>
+<h3 id="copy-page-tables-from-to-size"><a href="#copy-page-tables-from-to-size" class="headerlink" title="copy_page_tables(from,to,size)"></a>copy_page_tables(from,to,size)</h3><p>该函数复制指定线性地址和长度内的连续内存空间对应的页表项。</p>
+<p>输入参数from表示要复制的内存空间起始地址，size表示要复制的内存空间大小，to表示复制出的页表项填写位置</p>
+<ol>
+<li><p>检查from，to的合法性</p>
+</li>
+<li><p>计算from，to对应的页目录项指针。</p>
+<p>计算要拷贝的页面数/页目录项数。</p>
+</li>
+<li><p>同步枚举from，to对应的页目录项</p>
+<ol>
+<li><p>如果目标页目录项已为有效状态，发生panic宕机。</p>
+</li>
+<li><p>跳过无效的源页目录项。</p>
+</li>
+<li><p>计算源页表的起始地址</p>
+</li>
+<li><p>为目的页表分配内存页</p>
+</li>
+<li><p>填写目的页目录项</p>
+</li>
+<li><p>如果from为0，判定为复制内核页表，设置页表项复制计数为160（160*4KB=640KB为内核地址空间）</p>
+<p>否则判定为复制进程页表，设置计数为1024（全部复制）</p>
+</li>
+<li><p>同步枚举页表项</p>
+<ol>
+<li>跳过无效源页表项</li>
+<li>复制源页表项，将R/W项置0（设置目的页表项只读）</li>
+<li>填写目的页表项</li>
+<li>如果复制发生在主存区域，填写源页表项（设置源页表项只读）并修改mem_map引用计数。</li>
+</ol>
+</li>
+</ol>
+</li>
+<li><p>刷新TLB</p>
+</li>
+</ol>
+<p>如果成功，返回0，否则宕机。</p>
+<p>外部引用：</p>
+<ol>
+<li><p>Fork.c（kernel）中copy_mem函数</p>
+<p>该函数在创建新进程时，子进程从父进程处拷贝页表，实现内存共享。</p>
+</li>
+</ol>
+<h3 id="put-page-page-address"><a href="#put-page-page-address" class="headerlink" title="put_page(page,address)"></a>put_page(page,address)</h3><p>该函数用于建立物理页面到线性地址之间的映射。</p>
+<p>输入参数page表示物理页面的起始地址，address表示要映射的线性地址。</p>
+<ol>
+<li><p>检查物理页面起始地址的合法性。</p>
+</li>
+<li><p>如果该物理页面对应mem_map项不为1，发出警告，如果为0表示该页面尚未分配，如果为2+表示该页面不是当前进程独占页面。</p>
+</li>
+<li><p>计算页目录项指针</p>
+</li>
+<li><p>如果页目录项有效，则计算页表起始地址</p>
+<p>如果无效，则尝试分配空闲物理页，填写页目录项，再计算页表起始地址。</p>
+</li>
+<li><p>填写页表中address线性地址映射值为page物理地址。</p>
+</li>
+<li><p>返回page物理地址。</p>
+</li>
+</ol>
+<p>返回值：page物理地址。</p>
+<p>外部引用：</p>
+<ol>
+<li><p>Exec.c（fs）中change_idt函数</p>
+<p>该函数在加载可执行文件时，要按照文件头修改代码段长，并调用put_page将参数和环境数据串所在页面放置于数据段的末端</p>
+</li>
+</ol>
+<h3 id="un-wp-page-table-entry"><a href="#un-wp-page-table-entry" class="headerlink" title="un_wp_page(table_entry)"></a>un_wp_page(table_entry)</h3><p>当copy_page_table时，复制产生的子进程页表和父进程页表都会设置为只读状态，当进程需要修改页面内容时，触发写保护异常，该函数将处理写保护异常，为进程提供解决方案。</p>
+<p>输入参数table_entry表示触发写保护异常的页面对应的<strong>页表项</strong></p>
+<ol>
+<li>使用页表项计算页面起始地址。</li>
+<li>如果该页面位于主存区域，且目前页面处于独占状态，直接修改页表项，设置为可读可写，刷新TLB并退出。</li>
+<li>否则准备复制一个新页面</li>
+<li>申请一个空闲物理页</li>
+<li>如果写保护发生在主存区，将老页面在mem_map中引用计数-1，填写当前页表项为新申请的页面，刷新TLB</li>
+<li>调用copy_page来复制数据。</li>
+</ol>
+<h3 id="do-wp-page-error-code-address"><a href="#do-wp-page-error-code-address" class="headerlink" title="do_wp_page(error_code,address)"></a>do_wp_page(error_code,address)</h3><p>该函数是写保护异常的中断处理函数</p>
+<p>传入参数error_code中断错误码，address写保护异常发生处的地址。</p>
+<p>使用address计算异常所在的页面对应的页表项，调用un_wp_page并传入页表项。</p>
+<h3 id="write-verify-address"><a href="#write-verify-address" class="headerlink" title="write_verify(address)"></a>write_verify(address)</h3><p>该函数可以看做do_wp_page写保护异常处理的另一种方式，该方式不通过中断触发处理的方式，而是通过提前检查避免的方式。可以看做特殊情况下当写保护异常被动处理机制无效时的主动处理机制。</p>
+<p>传入参数address是需要检查写保护情况的线性地址。</p>
+<ol>
+<li>计算线性地址address对应页目录项地址并获取页目录项。</li>
+<li>根据页目录项获取页表项</li>
+<li>根据页表项判断是否是只读页</li>
+<li>如果是只读页，调用un_wp_page来处理即将发生的写保护异常。</li>
+</ol>
+<p>外部调用：</p>
+<ol>
+<li><p>Fork.c（kernel）中的verify_area函数</p>
+<p>当特权级为0的内核代码向用户空间写入数据时，写时复制机制和写保护异常都将不起作用，因此需要verify_area函数来提前检查写保护问题，该函数通过调用write_verify()来进行具体处理。</p>
+</li>
+</ol>
+<h3 id="get-empty-page-address"><a href="#get-empty-page-address" class="headerlink" title="get_empty_page(address)"></a>get_empty_page(address)</h3><p>该函数是调用get_free_page获取空闲页后调用put_page将该页映射到线性地址address处的组合函数。</p>
+<h3 id="try-to-share-address-task-struct-p"><a href="#try-to-share-address-task-struct-p" class="headerlink" title="try_to_share(address,task_struct* p)"></a>try_to_share(address,task_struct* p)</h3><p>该函数尝试将目标进程p和当前进程current在逻辑地址address处的页面上建立共享。</p>
+<p>传入参数address表示进程逻辑地址address，p表示要被共享页面的进程。</p>
+<p>源为p，目的为current</p>
+<ol>
+<li>获取源页面的页目录项</li>
+<li>获取源页面的页表项</li>
+<li>检查源页面是否干净，是否位于主存区域</li>
+<li>获取目的页面的页目录项</li>
+<li>如果目的页目录为空，为目的页表申请一页内存并填写目的页目录项。</li>
+<li>获取目的页面的页表项。</li>
+<li>检查目的页面是否已经被占用</li>
+<li>设置源页面写保护</li>
+<li>复制源页表项到目的页表项</li>
+<li>刷新TLB，在mem_map中登记引用情况</li>
+</ol>
+<h3 id="share-page-address"><a href="#share-page-address" class="headerlink" title="share_page(address)"></a>share_page(address)</h3><p>在缺页异常发生时，该函数尝试寻找一个可以与当前进程共享address处页面的进程。</p>
+<ol>
+<li>检查当前进程current使用的可执行文件是否存在，是否有两个以上的进程正在运行该可执行文件</li>
+<li>如果有，从后向前枚举任务表，找到一个同样在运行该文件的进程，调用try_to_share完成共享。</li>
+</ol>
+<p>如果成功，返回1，否则返回0</p>
+<h3 id="do-no-page-error-code-address"><a href="#do-no-page-error-code-address" class="headerlink" title="do_no_page(error_code,address)"></a>do_no_page(error_code,address)</h3><p>该函数是缺页中断的中断处理函数。</p>
+<ol>
+<li>从中断处地址address截取线性页面号</li>
+<li>通过中断处地址address和当前进程起始位置计算出发生中断的进程逻辑地址。</li>
+<li>如果逻辑地址高于代码段+数据段地址空间，说明在栈空间或者堆空间中发生缺页，此时要访问的页不包含静态数据，为动态申请，直接调用get_empty_page为该位置申请页面即可。</li>
+<li>否则说明在代码段、数据段地址空间中发生了缺页，此时要访问的页是包含静态数据的<ol>
+<li>首先调用share_page尝试从其他进程那里共享该页</li>
+<li>如果无法通过共享方式解决缺页异常，只能从磁盘块设备的可执行文件中调出对应静态数据。<ol>
+<li>首先申请分配一页空闲页（get_free_page）</li>
+<li>通过上文计算的进程逻辑地址推导要访问的数据块在可执行文件中的磁盘块序号（不是可IO的磁盘块号）</li>
+<li>从该磁盘块向后枚举4个块（4KB），调用bmap函数获取具体的设备逻辑块号（可以IO的磁盘块号）</li>
+<li>调用bread_page读入4KB的数据到分配的空闲页中</li>
+<li>由于存在一种情况，加载的这4个块不全是当前进程的可执行文件的内容，需要根据进程逻辑地址和可执行文件大小，计算出整个页中不属于该进程的“无效”区域</li>
+<li>对该区域清零</li>
+<li>调用put_page尝试在线性地址address与处理好的页面之间建立映射关系</li>
+<li>如果失败，则释放该页，并报错</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+<h2 id="page-s中的中断处理"><a href="#page-s中的中断处理" class="headerlink" title="page.s中的中断处理"></a>page.s中的中断处理</h2><h3 id="page-fault"><a href="#page-fault" class="headerlink" title="page_fault"></a>page_fault</h3><p>汇编编写的页错误中断处理程序</p>
+<p>对出错地址，测试其页表项中的页存在位，如果页存在，说明是写保护异常，调用do_wp_page处理，如果页不存在，说明是缺页异常，调用do_no_page处理。</p>
+<p>该过程不需要关心具体的出错码或者错误原因，通过出错后的页存在位可以反向推导错误原因，并执行对应的错误处理程序。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2021/05/17/GCC%E9%99%8D%E4%BD%8E%E7%89%88%E6%9C%AC%E7%9A%84%E4%B8%80%E4%B8%AA%E5%AE%9E%E8%B7%B5%E6%96%B9%E6%A1%88/" rel="prev" title="GCC降低版本的一个实践方案">
+                  <i class="fa fa-chevron-left"></i> GCC降低版本的一个实践方案
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+<script src="/js/comments.js"></script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">SRC(shao0099876@163.com)</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/muse/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
